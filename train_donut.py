@@ -15,12 +15,16 @@ import torch
 login(token="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")  # Replace with your access token
 
 # Set Paths
-BASE_PATH = Path("/var/www/project/ai/")  # Change this as needed
+# BASE_PATH = Path("/var/www/project/ai/")  # Change this as needed
+BASE_PATH = Path("/content/test/")  # Change this as needed
 IMAGE_PATH = BASE_PATH / "img"
 ANNOTATIONS_PATH = BASE_PATH / "img/metadata.jsonl"
 
 # Get the number of CPU cores
 num_cores = multiprocessing.cpu_count()
+
+# Check for GPU and set device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Set PyTorch to use all CPU threads
 torch.set_num_threads(num_cores)
@@ -82,7 +86,7 @@ class CustomDataCollator:
             "labels": labels,
         }
 
-# Applr transformations
+# Apply transformations
 processed_dataset = processed_dataset.map(
     transform_and_tokenize, remove_columns=["image", "text"], num_proc=num_cores  # Use all CPU cores
 )
@@ -103,20 +107,10 @@ model.config.encoder.image_size = image_size  # Use dimensions directly
 model.config.decoder_start_token_id = processor.tokenizer.convert_tokens_to_ids("<s>")
 model.config.pad_token_id = processor.tokenizer.pad_token_id
 
+# Move model to GPU if available
+model.to(device)
+
 # Define Training Arguments
-#training_args = Seq2SeqTrainingArguments(
-#    output_dir="donut-custom",
-#    num_train_epochs=3,
-#    per_device_train_batch_size=2,
-#    learning_rate=2e-5,
-#    save_strategy="epoch",
-#    evaluation_strategy="no",
-#    predict_with_generate=True,
-#    dataloader_num_workers=num_cores,  # Enable multiple data loader workers
-#    push_to_hub=True,
-#    hub_model_id="donut-custom",
-#    hub_token=HfFolder.get_token(),  # You can also pass login token explicitly
-#)
 training_args = Seq2SeqTrainingArguments(
     output_dir="donut-custom",
     num_train_epochs=3,
@@ -133,7 +127,6 @@ training_args = Seq2SeqTrainingArguments(
     hub_token=HfFolder.get_token(),  # You can also pass login token explicitly
 )
 
-
 class CustomSeq2SeqTrainer(Seq2SeqTrainer):
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
         # Remove the `num_items_in_batch` argument before calling the model
@@ -146,20 +139,11 @@ class CustomSeq2SeqTrainer(Seq2SeqTrainer):
 trainer = CustomSeq2SeqTrainer(
     model=model,
     args=training_args,
-	train_dataset=split_dataset["train"],
-	eval_dataset=split_dataset["test"],
+    train_dataset=split_dataset["train"],
+    eval_dataset=split_dataset["test"],
     data_collator=CustomDataCollator(),
     tokenizer=processor,  # Replace with the correct processor if needed
 )
-# # Define Trainer
-# trainer = Seq2SeqTrainer(
-#     model=model,
-#     args=training_args,
-#     train_dataset=split_dataset["train"],
-#     eval_dataset=split_dataset["test"],
-#     tokenizer=processor.tokenizer,
-#     data_collator=CustomDataCollator(),
-# )
 
 # Train the Model
 trainer.train()
@@ -170,4 +154,3 @@ processor.save_pretrained("donut-custom")
 
 # Push to HuggingFace Hub
 trainer.push_to_hub()
-
