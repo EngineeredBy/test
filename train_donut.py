@@ -49,7 +49,7 @@ def preprocess(sample):
 
 # Load and preprocess dataset
 dataset = load_dataset("imagefolder", data_dir=str(IMAGE_PATH), split="train")
-processed_dataset = dataset.map(preprocess, num_proc=num_cores)  # Use all CPU cores
+processed_dataset = dataset.map(preprocess, num_proc=None)  # Use all CPU cores
 
 # Transform dataset into pixel values and token IDs
 def transform_and_tokenize(sample):
