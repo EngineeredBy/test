@@ -27,7 +27,8 @@ num_cores = multiprocessing.cpu_count()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Set PyTorch to use all CPU threads
-torch.set_num_threads(num_cores)
+#torch.set_num_threads(num_cores)
+num_cores=None
 
 # Load Donut Processor
 processor = DonutProcessor.from_pretrained("naver-clova-ix/donut-base")
@@ -49,7 +50,7 @@ def preprocess(sample):
 
 # Load and preprocess dataset
 dataset = load_dataset("imagefolder", data_dir=str(IMAGE_PATH), split="train")
-processed_dataset = dataset.map(preprocess, num_proc=None)  # Use all CPU cores
+processed_dataset = dataset.map(preprocess, num_proc=num_cores)  # Use all CPU cores
 
 # Transform dataset into pixel values and token IDs
 def transform_and_tokenize(sample):
